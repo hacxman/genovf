@@ -6,6 +6,7 @@ import os
 from VMDKstream import convert_to_stream
 from operator import add
 import json
+import hashlib
 
 tpltypes = {'vsphere': 'vsphere.xml.tpl'}
 
@@ -22,22 +23,26 @@ diskitemtpl = '''
         <vmw:Config ovf:required="false" vmw:key="backing.writeThrough" vmw:value="false"/>
       </Item>'''
 
-def generate_manifest():
-  fout = NamedTemporaryFile(delete=False)
-  # hashlib is stupid so we can't use map :(
-  mf = self.generate_manifest_data() 
-  fout.write(mf)
-  self.log.debug("NAME %s" % fout.name)
-  os.rename(fout.name, '/tmp/manifest.mf')
+def generate_manifest(files, outdir=''):
+  with open(os.path.join(outdir, 'MANIFEST.MF'), 'w+') as fout:
+    # hashlib is stupid so we can't use map :(
+    mf = generate_manifest_data(files) 
+    fout.write(mf)
 
-def generate_manifest_data():
-  shas = []
+def generate_manifest_data(files):
   mf = ''
-  for vols in self.images.keys():
-    for img in self.images[vols]:
-      with open(img, 'rb') as fin:
-        digest = hashlib.sha256(fin.read()).hexdigest()
-        mf += "SHA256(%s)= %s\n" % (img, digest)
+  for img in files:
+    sys.stdout.write('Calculating hash for {0}\n'.format(img))
+    with open(img, 'rb') as fin:
+      digest = hashlib.sha256()
+      while True:
+        r = fin.read(1024*1024)
+        if r == '':
+          break
+        digest.update(r)
+
+      digest_str = digest.hexdigest()
+      mf += "SHA256(%s)= %s\n" % (img, digest_str)
 
   return mf
 
@@ -109,12 +114,8 @@ def doit(tplname, outname, inputimages, proffile):
          'disksection': reduce(add, disks, ''),
          'hwdiskitems': reduce(add, hwdisks, '')}
 
-#    print refs, disks, hwdisks
-
     with open(proffile) as prof:
-      print proffile
       hwcfg = json.load(prof)
-      print hwcfg
     d.update(hwcfg)
 
     outtpl = tpl.substitute(d)
@@ -122,7 +123,9 @@ def doit(tplname, outname, inputimages, proffile):
     with open(outname, 'w+') as ofil:
       ofil.write(outtpl)
 
-    sys.stdout.write('{0} wrote.\n'.format(outname))
+    sys.stdout.write('Wrote {0}.\n'.format(outname))
+    generate_manifest(inputimages + [outname])
+    sys.stdout.write('Wrote MANIFEST.MF.\n')
 
 def showusage():
   sys.stderr.write('''usage: ./gen.py [-t TYPE] [-o OUTFILE] [-c] [-h] -p profile.json -i IMAGE1 IMAGE2...
