@@ -1,0 +1,6 @@
+{
+"vmname": "testvm",
+"virtualhwfamily": "vmx-04",
+"cpucount": 2,
+"ramsize": 4096
+}
