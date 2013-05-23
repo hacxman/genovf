@@ -6,7 +6,11 @@ Generates OVF from template, HW profile and set of supplied RAW/VMDK images
 HOWTO
 =====
 1) Getting OVF
+
 2) Replacing KS in OZ
+
+3) Build stop after no disk activity.
+
 
 1) Getting OVF
 
@@ -61,3 +65,9 @@ Hopefully it will work.
 OZ's KS templates are in oz/oz/auto. I've edited rhel-6-jeos.ks (it depends on your OS of choice).
 My adjustments dealt with logvols. It's pretty simple to do it and you might find handy having
 some KS from anaconda for example. Rest is the same is in 1).
+
+3) Build stop after no disk activity.
+It might happen that you'll get smaller images than you wanted. In that case you
+either need to edit TDL and add <disk><size>YOURSIZE</size></disk>.
+OR If it won't help you can edit default value for size in generate_diskimage function in
+oz/oz/Guest.py.
