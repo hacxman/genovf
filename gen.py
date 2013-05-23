@@ -4,7 +4,8 @@ from string import Template
 import sys
 import os
 from VMDKstream import convert_to_stream
-
+from operator import add
+import json
 
 tpltypes = {'vsphere': 'vsphere.xml.tpl'}
 
@@ -60,7 +61,7 @@ def construct_refs(intpl, filenames):
     size = os.stat(fin).st_size
     sparsesize = os.stat(fin).st_blocks*512
 
-    d = {'vmdkname': fin, 'fileid': 'file'+str(idx), 'maxfilesize': str(size)}
+    d = {'vmdkname': fin, 'fileid': 'file'+str(idx), 'filemaxsize': str(size)}
     tpl = Template(intpl)
     orefs.append(tpl.substitute(d))
 
@@ -81,10 +82,10 @@ def construct_disks(intpl, filenames):
   return orefs
 
 def construct_hw_disks(intpl, diskids):
-  idx = 1
+  idx = 0
   orefs = [] # output Disk Section fragments for OVF
   for did in diskids:
-    d = {'idx': idx, 'diskid': did, 'instanceid': 17+idx}
+    d = {'idx': idx, 'diskid': 'vmdisk'+str(idx+1), 'instanceid': 17+idx}
     #TODO: this instanceid thingy needs systematic fix
     #      17 is magical number
 
@@ -95,16 +96,26 @@ def construct_hw_disks(intpl, diskids):
 
 
 
-def doit(tplname, outname, inputimages):
+def doit(tplname, outname, inputimages, proffile):
   with open(tplname) as ftpl:
     tpl = Template(ftpl.read())
-    d = {'cpucount': 10000}
 
     refs = construct_refs(reftpl, inputimages)
     disks = construct_disks(disktpl, inputimages)
     hwdisks = construct_hw_disks(diskitemtpl, disks)
 
-    print refs, disks, hwdisks
+    d = {'cpucount': 1,
+         'filereferencies': reduce(add, refs, ''), 
+         'disksection': reduce(add, disks, ''),
+         'hwdiskitems': reduce(add, hwdisks, '')}
+
+#    print refs, disks, hwdisks
+
+    with open(proffile) as prof:
+      print proffile
+      hwcfg = json.load(prof)
+      print hwcfg
+    d.update(hwcfg)
 
     outtpl = tpl.substitute(d)
 
@@ -114,12 +125,13 @@ def doit(tplname, outname, inputimages):
     sys.stdout.write('{0} wrote.\n'.format(outname))
 
 def showusage():
-  sys.stderr.write('''usage: ./gen.py [-t TYPE] [-o OUTFILE] [-c] [-h] -i IMAGE1 IMAGE2...
+  sys.stderr.write('''usage: ./gen.py [-t TYPE] [-o OUTFILE] [-c] [-h] -p profile.json -i IMAGE1 IMAGE2...
       where
         -t TYPE is one of: vsphere(default)
         -o OUTFILE is output OVF name (default output.ovf)
         -c convert raw imgs to streamable VMDKs
         -i specifies list of input disk imgs
+        -p specifies HW profile
         -h shows this help\n''')
 
 if __name__ == '__main__':
@@ -144,11 +156,20 @@ if __name__ == '__main__':
     for inf in sys.argv[argidx:]:
       if not inf.startswith('-'): 
         inputimages.append(inf)
+      else:
+        break
   else:
     sys.stderr.write('-i argument is mandatory. exitting.\n')
     exit(2)
 
+  if '-p' in sys.argv:
+    proffile = sys.argv[sys.argv.index('-p')+1]
+  else:
+    sys.stderr.write('-p argument is mandatory. exitting.\n')
+    exit(2)
+
+
   if cvt:
     inputimages = convert_images(inputimages, '.')
 
-  doit(tpltypes[typ], outfile, inputimages)
+  doit(tpltypes[typ], outfile, inputimages, proffile)
