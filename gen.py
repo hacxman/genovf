@@ -12,7 +12,7 @@ tpltypes = {'vsphere': 'vsphere.xml.tpl'}
 
 reftpl = '<File ovf:href="$vmdkname" ovf:id="$fileid" ovf:size="$filemaxsize"/>'
 disktpl = '<Disk ovf:capacity="$capacity" ovf:capacityAllocationUnits="byte" ovf:diskId="$diskid" ovf:fileRef="$fileid" ovf:format="http://www.vmware.com/interfaces/specifications/vmdk.html#streamOptimized" ovf:populatedSize="$populsize"/>'
-diskitemtpl = '''
+diskitemtpl = {'vsphere': '''
       <Item>
         <rasd:AddressOnParent>$idx</rasd:AddressOnParent>
         <rasd:ElementName>Hard disk $idx</rasd:ElementName>
@@ -21,8 +21,36 @@ diskitemtpl = '''
         <rasd:Parent>3</rasd:Parent>
         <rasd:ResourceType>17</rasd:ResourceType>
         <vmw:Config ovf:required="false" vmw:key="backing.writeThrough" vmw:value="false"/>
-      </Item>'''
-
+      </Item>''',
+      'rhev': '''
+      <Item>
+        <rasd:Caption>
+        b57db30f-070f-4173-bf6a-333ae9a247b0_Disk1</rasd:Caption>
+        <rasd:InstanceId>
+        92001497-5161-4233-9e91-0bf07d1d46b5</rasd:InstanceId>
+        <rasd:ResourceType>17</rasd:ResourceType>
+        <rasd:HostResource>
+        f8da1407-601a-4751-bd87-ac32e70c7a86/92001497-5161-4233-9e91-0bf07d1d46b5</rasd:HostResource>
+        <rasd:Parent>
+        00000000-0000-0000-0000-000000000000</rasd:Parent>
+        <rasd:Template>
+        00000000-0000-0000-0000-000000000000</rasd:Template>
+        <rasd:ApplicationList></rasd:ApplicationList>
+        <rasd:StorageId>
+        c256eb74-a127-48d5-9321-a6bbcf354326</rasd:StorageId>
+        <rasd:StoragePoolId>
+        b9bb11c2-f397-4f41-a57b-7ac15a894779</rasd:StoragePoolId>
+        <rasd:CreationDate>2013/05/23 19:31:52</rasd:CreationDate>
+        <rasd:LastModified>2013/05/23 19:31:54</rasd:LastModified>
+        <Type>disk</Type>
+        <Device>disk</Device>
+        <rasd:Address></rasd:Address>
+        <BootOrder>0</BootOrder>
+        <IsPlugged>true</IsPlugged>
+        <IsReadOnly>false</IsReadOnly>
+        <Alias></Alias>
+      </Item>'''}
+ 
 def generate_manifest(files, outdir=''):
   with open(os.path.join(outdir, 'MANIFEST.MF'), 'w+') as fout:
     # hashlib is stupid so we can't use map :(
@@ -101,13 +129,13 @@ def construct_hw_disks(intpl, diskids):
 
 
 
-def doit(tplname, outname, inputimages, proffile):
+def doit(tplname, outname, inputimages, proffile, typ):
   with open(tplname) as ftpl:
     tpl = Template(ftpl.read())
 
     refs = construct_refs(reftpl, inputimages)
     disks = construct_disks(disktpl, inputimages)
-    hwdisks = construct_hw_disks(diskitemtpl, disks)
+    hwdisks = construct_hw_disks(diskitemtpl[typ], disks)
 
     d = {'cpucount': 1,
          'filereferencies': reduce(add, refs, ''), 
@@ -175,4 +203,4 @@ if __name__ == '__main__':
   if cvt:
     inputimages = convert_images(inputimages, '.')
 
-  doit(tpltypes[typ], outfile, inputimages, proffile)
+  doit(tpltypes[typ], outfile, inputimages, proffile, typ)
