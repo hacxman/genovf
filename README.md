@@ -5,11 +5,11 @@ Generates OVF from template, HW profile and set of supplied RAW/VMDK images
 
 HOWTO
 =====
-1. [Getting OVF](#1)
-2. [Replacing KS in OZ](#2)
-3. [Build stop after no disk activity](#3)
+1. [Getting OVF](#getting-ovf)
+2. [Replacing KS in OZ](#replacing-ks)
+3. [Build stop after no disk activity](#build-stop-after-no-disk-activity)
 
-<h2 id="1">Getting OVF</h2>
+<h2 id="getting-ovf">Getting OVF</h2>
 
 You need to have working Imagefactory and OZ installation.
 
