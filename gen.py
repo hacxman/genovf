@@ -7,126 +7,11 @@ from VMDKstream import convert_to_stream
 from operator import add
 import json
 import hashlib
+from importlib import import_module
 
 tpltypes = {'vsphere': 'vsphere.xml.tpl'}
 
-reftpl = '<File ovf:href="$vmdkname" ovf:id="$fileid" ovf:size="$filemaxsize"/>'
-disktpl = '<Disk ovf:capacity="$capacity" ovf:capacityAllocationUnits="byte" ovf:diskId="$diskid" ovf:fileRef="$fileid" ovf:format="http://www.vmware.com/interfaces/specifications/vmdk.html#streamOptimized" ovf:populatedSize="$populsize"/>'
-diskitemtpl = {'vsphere': '''
-      <Item>
-        <rasd:AddressOnParent>$idx</rasd:AddressOnParent>
-        <rasd:ElementName>Hard disk $idx</rasd:ElementName>
-        <rasd:HostResource>ovf:/disk/$diskid</rasd:HostResource>
-        <rasd:InstanceID>$instanceid</rasd:InstanceID>
-        <rasd:Parent>3</rasd:Parent>
-        <rasd:ResourceType>17</rasd:ResourceType>
-        <vmw:Config ovf:required="false" vmw:key="backing.writeThrough" vmw:value="false"/>
-      </Item>''',
-      'rhev': '''
-      <Item>
-        <rasd:Caption>
-        b57db30f-070f-4173-bf6a-333ae9a247b0_Disk1</rasd:Caption>
-        <rasd:InstanceId>
-        92001497-5161-4233-9e91-0bf07d1d46b5</rasd:InstanceId>
-        <rasd:ResourceType>17</rasd:ResourceType>
-        <rasd:HostResource>
-        f8da1407-601a-4751-bd87-ac32e70c7a86/92001497-5161-4233-9e91-0bf07d1d46b5</rasd:HostResource>
-        <rasd:Parent>
-        00000000-0000-0000-0000-000000000000</rasd:Parent>
-        <rasd:Template>
-        00000000-0000-0000-0000-000000000000</rasd:Template>
-        <rasd:ApplicationList></rasd:ApplicationList>
-        <rasd:StorageId>
-        c256eb74-a127-48d5-9321-a6bbcf354326</rasd:StorageId>
-        <rasd:StoragePoolId>
-        b9bb11c2-f397-4f41-a57b-7ac15a894779</rasd:StoragePoolId>
-        <rasd:CreationDate>2013/05/23 19:31:52</rasd:CreationDate>
-        <rasd:LastModified>2013/05/23 19:31:54</rasd:LastModified>
-        <Type>disk</Type>
-        <Device>disk</Device>
-        <rasd:Address></rasd:Address>
-        <BootOrder>0</BootOrder>
-        <IsPlugged>true</IsPlugged>
-        <IsReadOnly>false</IsReadOnly>
-        <Alias></Alias>
-      </Item>'''}
- 
-def generate_manifest(files, outdir=''):
-  with open(os.path.join(outdir, 'MANIFEST.MF'), 'w+') as fout:
-    # hashlib is stupid so we can't use map :(
-    mf = generate_manifest_data(files) 
-    fout.write(mf)
-
-def generate_manifest_data(files):
-  mf = ''
-  for img in files:
-    sys.stdout.write('Calculating hash for {0}\n'.format(img))
-    with open(img, 'rb') as fin:
-      digest = hashlib.sha256()
-      while True:
-        r = fin.read(1024*1024)
-        if r == '':
-          break
-        digest.update(r)
-
-      digest_str = digest.hexdigest()
-      mf += "SHA256(%s)= %s\n" % (img, digest_str)
-
-  return mf
-
-
-def convert_images(files, outpath):
-  ofils = []
-  for f in files:
-    foutname = os.path.join(outpath, os.path.basename(f)+'.vmdk')
-    sys.stdout.write('Converting {0} to {1}\n'.format(f, foutname))
-    convert_to_stream(f, foutname)
-
-    ofils.append(foutname)
-
-  sys.stdout.write('Converting done.\n')
-  return ofils
-
-def construct_refs(intpl, filenames):
-  idx = 1
-  orefs = [] # output File Referencies fragments for OVF
-  for fin in filenames:
-    size = os.stat(fin).st_size
-    sparsesize = os.stat(fin).st_blocks*512
-
-    d = {'vmdkname': fin, 'fileid': 'file'+str(idx), 'filemaxsize': str(size)}
-    tpl = Template(intpl)
-    orefs.append(tpl.substitute(d))
-
-  return orefs
-
-def construct_disks(intpl, filenames):
-  idx = 1
-  orefs = [] # output Disk Section fragments for OVF
-  for fin in filenames:
-    size = os.stat(fin).st_size
-    sparsesize = os.stat(fin).st_blocks*512
-
-    d = {'capacity': str(size), 'diskid': 'vmdisk'+str(idx),
-         'fileid': 'file'+str(idx), 'populsize': str(sparsesize)}
-    tpl = Template(intpl)
-    orefs.append(tpl.substitute(d))
-
-  return orefs
-
-def construct_hw_disks(intpl, diskids):
-  idx = 0
-  orefs = [] # output Disk Section fragments for OVF
-  for did in diskids:
-    d = {'idx': idx, 'diskid': 'vmdisk'+str(idx+1), 'instanceid': 17+idx}
-    #TODO: this instanceid thingy needs systematic fix
-    #      17 is magical number
-
-    tpl = Template(intpl)
-    orefs.append(tpl.substitute(d))
-
-  return orefs
-
+converters = {'vsphere': 'vsphere', 'rhev': 'rhev'}
 
 
 def doit(tplname, outname, inputimages, proffile, typ):
@@ -155,10 +40,25 @@ def doit(tplname, outname, inputimages, proffile, typ):
     generate_manifest(inputimages + [outname])
     sys.stdout.write('Wrote MANIFEST.MF.\n')
 
+def doit2(mod, outname, inputimages, proffile):
+  with open(mod.template_name) as ftpl:
+    tpl = Template(ftpl.read())
+
+    f = mod.construct_fragments(inputimages)
+    map(lambda x: reduce(add, f[x], ''), f.keys())
+    print f
+
+    with open(proffile) as prof:
+      hwcfg = json.load(prof)
+    f.update(hwcfg)
+    outtpl = tpl.substitute(f)
+    mod.write_ovf(outtpl, '.')
+
+
 def showusage():
   sys.stderr.write('''usage: ./gen.py [-t TYPE] [-o OUTFILE] [-c] [-h] -p profile.json -i IMAGE1 IMAGE2...
       where
-        -t TYPE is one of: vsphere(default)
+        -t TYPE is one of: vsphere(default), rhev
         -o OUTFILE is output OVF name (default output.ovf)
         -c convert raw imgs to streamable VMDKs
         -i specifies list of input disk imgs
@@ -173,8 +73,8 @@ if __name__ == '__main__':
 
   if '-t' in sys.argv:
     typ = sys.argv[sys.argv.index('-t')+1]
-    if typ not in tpltypes.keys():
-      sys.stderr.write('{0} is unsupported, supported -t options are {1}\n'.format(typ, tpltypes.keys()))
+    if typ not in converters.keys():
+      sys.stderr.write('{0} is unsupported, supported -t options are {1}\n'.format(typ, converters.keys()))
   if '-o' in sys.argv:
     outfile = sys.argv[sys.argv.index('-o')+1]
   if '-c' in sys.argv:
@@ -200,7 +100,11 @@ if __name__ == '__main__':
     exit(2)
 
 
+  mod = import_module(converters[typ])
   if cvt:
-    inputimages = convert_images(inputimages, '.')
+    inputimages = mod.convert_images(inputimages, '.')
 
-  doit(tpltypes[typ], outfile, inputimages, proffile, typ)
+  doit2(mod, outfile, inputimages, proffile)
+  #exit(1987)
+
+  #doit(tpltypes[typ], outfile, inputimages, proffile, typ)
