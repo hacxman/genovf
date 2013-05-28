@@ -46,7 +46,7 @@ ovf:version="3.1.0.0">
       <Description>OtherLinux</Description>
     </Section>
     <Section xsi:type="ovf:VirtualHardwareSection_Type">
-      <Info>1 CPU, 512 Memeory</Info>
+      <Info>$cpucount CPU, $ramsize Memeory</Info>
       <System>
         <vssd:VirtualSystemType>ENGINE
         3.1.0.0</vssd:VirtualSystemType>
@@ -57,7 +57,7 @@ ovf:version="3.1.0.0">
         <rasd:InstanceId>1</rasd:InstanceId>
         <rasd:ResourceType>3</rasd:ResourceType>
         <rasd:num_of_sockets>1</rasd:num_of_sockets>
-        <rasd:cpu_per_socket>1</rasd:cpu_per_socket>
+        <rasd:cpu_per_socket>$cpucount</rasd:cpu_per_socket>
       </Item>
       <Item>
         <rasd:Caption>$ramsize MB of memory</rasd:Caption>
