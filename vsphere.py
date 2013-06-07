@@ -13,7 +13,8 @@ diskitemtpl = '''
         <vmw:Config ovf:required="false" vmw:key="backing.writeThrough" vmw:value="false"/>
       </Item>'''
 
-template_name = 'vsphere.xml.tpl'
+import module_locator
+template_name = os.path.join(module_locator.module_path(), 'vsphere.xml.tpl')
 
 def construct_fragments(inputimages):
   refs = construct_refs(reftpl, inputimages)
