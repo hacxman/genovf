@@ -40,7 +40,7 @@ def doit(tplname, outname, inputimages, proffile, typ):
     generate_manifest(inputimages + [outname])
     sys.stdout.write('Wrote MANIFEST.MF.\n')
 
-def doit2(mod, outname, inputimages, proffile):
+def doit2(mod, outname, inputimages, proffile, outdir):
   with open(mod.template_name) as ftpl:
     tpl = Template(ftpl.read())
 
@@ -52,7 +52,7 @@ def doit2(mod, outname, inputimages, proffile):
       hwcfg = json.load(prof)
     f.update(hwcfg)
     outtpl = tpl.substitute(f)
-    mod.write_ovf(outtpl, '.')
+    mod.write_ovf(outtpl, outdir)
 
 
 def showusage():
@@ -60,7 +60,8 @@ def showusage():
       where
         -t TYPE is one of: vsphere(default), rhev
         -o OUTFILE is output OVF name (default output.ovf)
-        -c convert raw imgs to streamable VMDKs
+        -O OUTDIR is output directory (default .)
+        -c convert raw imgs to target format (streamable VMDK, QCOW2; depends on -t)
         -i specifies list of input disk imgs
         -p specifies HW profile
         -h shows this help\n''')
@@ -70,6 +71,8 @@ if __name__ == '__main__':
   outfile = 'output.ovf'
   cvt = False
   inputimages = []
+  outdir = '.'
+  make_archvive = False
 
   if '-t' in sys.argv:
     typ = sys.argv[sys.argv.index('-t')+1]
@@ -77,6 +80,8 @@ if __name__ == '__main__':
       sys.stderr.write('{0} is unsupported, supported -t options are {1}\n'.format(typ, converters.keys()))
   if '-o' in sys.argv:
     outfile = sys.argv[sys.argv.index('-o')+1]
+  if '-O' in sys.argv:
+    outdir = sys.argv[sys.argv.index('-O')+1]
   if '-c' in sys.argv:
     cvt = True
   if '-h' in sys.argv:
@@ -99,12 +104,14 @@ if __name__ == '__main__':
     sys.stderr.write('-p argument is mandatory. exitting.\n')
     exit(2)
 
+  if '-a' in sys.argv:
+    make_archvive = True
 
   mod = import_module(converters[typ])
   if cvt:
-    inputimages = mod.convert_images(inputimages, '.')
+    inputimages = mod.convert_images(inputimages, outdir)
 
-  doit2(mod, outfile, inputimages, proffile)
+  doit2(mod, outfile, inputimages, proffile, outdir)
   #exit(1987)
 
   #doit(tpltypes[typ], outfile, inputimages, proffile, typ)
