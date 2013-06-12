@@ -54,7 +54,7 @@ def doit2(mod, outname, (origimages, inputimages, otherf),
       hwcfg = json.load(prof)
     f.update(hwcfg)
     outtpl = tpl.substitute(f)
-    ovf_name = mod.write_ovf(outtpl, outdir)
+    ovf_name = mod.write_ovf(outname, outtpl, outdir)
 
   img_meta_paired = filter(lambda _x: _x is not None,
       reduce(lambda _u, (_v, _w): _u + [_v, _w],

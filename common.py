@@ -8,6 +8,16 @@ import hashlib
 from importlib import import_module
 import tarfile
 
+def construct_fragments(origimages, inputimages,
+    reftpl, disktpl, diskitemtpl):
+  refs = construct_refs(reftpl, origimages, inputimages)
+  disks = construct_disks(disktpl, origimages, inputimages)
+  hwdisks = construct_hw_disks(diskitemtpl, disks)
+
+  return {'filereferencies': reduce(add, refs, ''),
+          'disksection': reduce(add, disks, ''),
+          'hwdiskitems': reduce(add, hwdisks, '')}
+
 def generate_manifest(files, outdir=''):
   with open(os.path.join(outdir, 'MANIFEST.MF'), 'w+') as fout:
     # hashlib is stupid so we can't use map :(
@@ -33,6 +43,7 @@ def generate_manifest_data(files):
 
 def convert_images_to_vmdk(files, outpath):
   ofils = []
+  os.makedirs(outpath)
   for f in files:
     foutname = os.path.join(outpath, os.path.basename(f)+'.vmdk')
     sys.stdout.write('Converting {0} to {1}\n'.format(f, foutname))
@@ -41,7 +52,7 @@ def convert_images_to_vmdk(files, outpath):
     ofils.append(foutname)
 
   sys.stdout.write('Converting done.\n')
-  return ofils
+  return [files, ofils, []]
 
 def construct_refs(intpl, origimages, filenames):
   idx = 1

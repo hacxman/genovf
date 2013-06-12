@@ -45,13 +45,8 @@ import module_locator
 template_name = os.path.join(module_locator.module_path(), 'rhev.xml.tpl')
 
 def construct_fragments(origimages, inputimages):
-  refs = common.construct_refs(reftpl, origimages, inputimages)
-  disks = common.construct_disks(disktpl, origimages, inputimages)
-  hwdisks = common.construct_hw_disks(diskitemtpl, disks)
-
-  return {'filereferencies': reduce(add, refs, ''),
-          'disksection': reduce(add, disks, ''),
-          'hwdiskitems': reduce(add, hwdisks, '')}
+  return common.construct_fragments(origimages,
+      inputimages, reftpl, disktpl, diskitemtpl)
 
 def construct_manifest(files, outdir):
   #TODO: we need to construct metafile
@@ -115,7 +110,7 @@ def convert_images(files, outpath):
 
   return [files, onames, mfiles]
 
-def write_ovf(outtpl, outpath):
+def write_ovf(ovfname, outtpl, outpath):
   '''
   doc taken from ovirt-image-uploader
   The image uploader can be used to list export storage domains and upload OVF files to
@@ -132,6 +127,7 @@ def write_ovf(outtpl, outpath):
       |       |--- <UUID>
       |             |--- <UUID>.ovf
   '''
+  # ovfname is ignored atm and is used in vsphere module
 
   uuidx = str(uuid.uuid1())
   ovfdir = os.path.join(outpath, 'master/vms/', uuidx)
