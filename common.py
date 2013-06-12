@@ -6,7 +6,7 @@ from operator import add
 import json
 import hashlib
 from importlib import import_module
-
+import tarfile
 
 def generate_manifest(files, outdir=''):
   with open(os.path.join(outdir, 'MANIFEST.MF'), 'w+') as fout:
@@ -43,11 +43,11 @@ def convert_images_to_vmdk(files, outpath):
   sys.stdout.write('Converting done.\n')
   return ofils
 
-def construct_refs(intpl, filenames):
+def construct_refs(intpl, origimages, filenames):
   idx = 1
   orefs = [] # output File Referencies fragments for OVF
-  for fin in filenames:
-    size = os.stat(fin).st_size
+  for ofin, fin in zip(origimages, filenames):
+    size = os.stat(ofin).st_size
     sparsesize = os.stat(fin).st_blocks*512
 
     d = {'vmdkname': fin, 'fileid': 'file'+str(idx), 'filemaxsize': str(size)}
@@ -56,11 +56,11 @@ def construct_refs(intpl, filenames):
 
   return orefs
 
-def construct_disks(intpl, filenames):
+def construct_disks(intpl, origimages, filenames):
   idx = 1
   orefs = [] # output Disk Section fragments for OVF
-  for fin in filenames:
-    size = os.stat(fin).st_size
+  for ofin, fin in zip(origimages, filenames):
+    size = os.stat(ofin).st_size
     sparsesize = os.stat(fin).st_blocks*512
 
     d = {'capacity': str(size), 'diskid': 'vmdisk'+str(idx),
@@ -83,4 +83,8 @@ def construct_hw_disks(intpl, diskids):
 
   return orefs
 
+def create_archive(outfile, files, gzipit=True):
+  mode = 'w' if not gzipit else 'w|gz'
 
+  with tarfile.open(outfile, mode) as tar:
+    map(lambda x: tar.add(x), files)

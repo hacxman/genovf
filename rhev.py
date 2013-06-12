@@ -5,6 +5,10 @@ import time
 import subprocess
 import sys
 from operator import add
+from common import create_archive
+
+__all__ = ['construct_fragments', 'construct_manifest', 'convert_images',
+           'create_archive', 'template_name']
 
 diskitemtpl = '''
       <Item>
@@ -40,9 +44,9 @@ disktpl = '<Disk ovf:capacity="$capacity" ovf:capacityAllocationUnits="byte" ovf
 import module_locator
 template_name = os.path.join(module_locator.module_path(), 'rhev.xml.tpl')
 
-def construct_fragments(inputimages):
-  refs = common.construct_refs(reftpl, inputimages)
-  disks = common.construct_disks(disktpl, inputimages)
+def construct_fragments(origimages, inputimages):
+  refs = common.construct_refs(reftpl, origimages, inputimages)
+  disks = common.construct_disks(disktpl, origimages, inputimages)
   hwdisks = common.construct_hw_disks(diskitemtpl, disks)
 
   return {'filereferencies': reduce(add, refs, ''),
@@ -81,11 +85,11 @@ def construct_metafile(fimg, fmeta, img_idx, dom_idx):
   metafile += "SIZE=" + str(os.stat(fimg).st_size) + "\n"
   metafile += "TYPE=SPARSE\n"
   metafile += "DESCRIPTION=Created by genovf\n"
-  metafile += "EOF\n"
+  #[MaS[MaS[MaS[MaS[MaS[MaS[M`S[M`S[M`S[M`S[M#S
 
   with open(fmeta, 'w+') as f:
     f.write(metafile)
-#  return metafile
+  return fmeta
 
 
 def convert_images(files, outpath):
@@ -94,12 +98,14 @@ def convert_images(files, outpath):
 
   os.makedirs(imgdir)
   onames = []
+  mfiles = []
   for fname in files:
     img_uuidx = str(uuid.uuid1())
 
     foutname = os.path.join(imgdir, str(img_uuidx))
     moutname = os.path.join(imgdir, str(img_uuidx)+'.meta')
     onames.append(foutname)
+    mfiles.append(moutname)
 
     sys.stdout.write('Converting {0} to {1}\n'.format(fname, foutname))
     subprocess.check_output(['qemu-img', 'convert', '-O', 'qcow2', fname, foutname])
@@ -107,7 +113,7 @@ def convert_images(files, outpath):
     # TODO: fix zeroed uuid
     construct_metafile(foutname, moutname, img_uuidx, '00000000-0000-0000-0000-000000000000')
 
-  return files
+  return [files, onames, mfiles]
 
 def write_ovf(outtpl, outpath):
   '''
@@ -134,4 +140,6 @@ def write_ovf(outtpl, outpath):
   os.makedirs(ovfdir)
   with open(outname, 'w+') as ofil:
     ofil.write(outtpl)
+
+  return outname
 
