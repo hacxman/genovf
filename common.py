@@ -23,12 +23,20 @@ def construct_manifest(files, outdir=''):
 
   with open(fname, 'w+') as fout:
     # hashlib is stupid so we can't use map :(
-    mf = generate_manifest_data(files) 
+    mf = generate_manifest_data(files, outdir)
     fout.write(mf)
   return fname
 
-def generate_manifest_data(files):
+def generate_manifest_data(files, outdir):
   mf = ''
+  #fixup path so it will have trailing slash
+  cwd = os.getcwd()
+  outdir = os.path.join(outdir, '')
+  outdirslen = len(outdir)
+  files = map(lambda fil: fil[outdirslen:], files)
+
+  os.chdir(outdir)
+
   for img in files:
     sys.stdout.write('Calculating hash for {0}\n'.format(img))
     with open(img, 'rb') as fin:
@@ -42,6 +50,7 @@ def generate_manifest_data(files):
       digest_str = digest.hexdigest()
       mf += "SHA256(%s)= %s\n" % (img, digest_str)
 
+  os.chdir(cwd)
   return mf
 
 def convert_images_to_vmdk(files, outpath):
@@ -101,7 +110,6 @@ def create_archive(outfile, files, gzipit=True, stripandcwd=True):
   mode = 'w' if not gzipit else 'w|gz'
 
   with tarfile.open(outfile, mode) as tar:
-    os.path.dirname()
     for x in files:
       if stripandcwd:
         cwd = os.getcwd()

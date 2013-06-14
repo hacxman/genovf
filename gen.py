@@ -42,7 +42,7 @@ converters = {'vsphere': 'vsphere', 'rhev': 'rhev'}
 #    sys.stdout.write('Wrote MANIFEST.MF.\n')
 #
 def doit2(mod, outname, (origimages, inputimages, otherf),
-          proffile, outdir, make_archive):
+          proffile, outdir, make_archive, typ):
   with open(mod.template_name) as ftpl:
     tpl = Template(ftpl.read())
 
@@ -67,7 +67,9 @@ def doit2(mod, outname, (origimages, inputimages, otherf),
   if make_archive:
     filelist = filter(lambda _x: _x is not None,
         [ovf_name, mf_name] + img_meta_paired)
-    mod.create_archive(outname+'.ova', filelist)
+    #TODO: stripandcwd info could be moved into module itself
+    #      and not hardcoded like this
+    mod.create_archive(outname+'.ova', filelist, stripandcwd=typ=='vsphere')
   print outname+'.ova'
 
 
@@ -129,7 +131,7 @@ if __name__ == '__main__':
     origimages, inputimages, otherf = mod.convert_images(inputimages, outdir)
 
   doit2(mod, outfile, (origimages, inputimages, otherf),
-        proffile, outdir, make_archive)
+        proffile, outdir, make_archive, typ)
   #exit(1987)
 
   #doit(tpltypes[typ], outfile, inputimages, proffile, typ)
