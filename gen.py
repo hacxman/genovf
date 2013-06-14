@@ -60,9 +60,14 @@ def doit2(mod, outname, (origimages, inputimages, otherf),
       reduce(lambda _u, (_v, _w): _u + [_v, _w],
           izip_longest(inputimages, otherf), []))
 
+  mf_name = mod.construct_manifest([ovf_name] + img_meta_paired, outdir)
+  print 'manifest: ', mf_name
+
 #  print outname, [ovf_name] + img_meta_paired]
   if make_archive:
-    mod.create_archive(outname+'.ova', [ovf_name] + img_meta_paired)
+    filelist = filter(lambda _x: _x is not None,
+        [ovf_name, mf_name] + img_meta_paired)
+    mod.create_archive(outname+'.ova', filelist)
   print outname+'.ova'
 
 

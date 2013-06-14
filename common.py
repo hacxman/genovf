@@ -18,11 +18,14 @@ def construct_fragments(origimages, inputimages,
           'disksection': reduce(add, disks, ''),
           'hwdiskitems': reduce(add, hwdisks, '')}
 
-def generate_manifest(files, outdir=''):
-  with open(os.path.join(outdir, 'MANIFEST.MF'), 'w+') as fout:
+def construct_manifest(files, outdir=''):
+  fname = os.path.join(outdir, 'MANIFEST.MF')
+
+  with open(fname, 'w+') as fout:
     # hashlib is stupid so we can't use map :(
     mf = generate_manifest_data(files) 
     fout.write(mf)
+  return fname
 
 def generate_manifest_data(files):
   mf = ''
@@ -94,8 +97,22 @@ def construct_hw_disks(intpl, diskids):
 
   return orefs
 
-def create_archive(outfile, files, gzipit=True):
+def create_archive(outfile, files, gzipit=True, stripandcwd=True):
   mode = 'w' if not gzipit else 'w|gz'
 
   with tarfile.open(outfile, mode) as tar:
-    map(lambda x: tar.add(x), files)
+    os.path.dirname()
+    for x in files:
+      if stripandcwd:
+        cwd = os.getcwd()
+        dirname = os.path.dirname(x)
+        name = os.path.basename(x)
+        os.chdir(dirname)
+      else:
+        name = x
+
+      tar.add(name)
+
+      if stripandcwd:
+        os.chdir(cwd)
+    #map(lambda x: tar.add(x), files)

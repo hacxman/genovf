@@ -35,7 +35,7 @@ def construct_fragments(origimages, inputimages):
 #          'hwdiskitems': hwdisks}
 
 def construct_manifest(files, outdir):
-  common.generate_manifest(files, outdir)
+  return common.construct_manifest(files, outdir)
 
 def convert_images(files, outpath):
   return common.convert_images_to_vmdk(files, outpath)
@@ -46,6 +46,8 @@ def write_ovf(outname, outtpl, outpath):
   except OSError as e:
     print e
 
-  with open(os.path.join(outpath, outname), "w+") as ofil:
+  path = os.path.join(outpath, outname)
+
+  with open(path, "w+") as ofil:
     ofil.write(outtpl)
-  return outname
+  return path

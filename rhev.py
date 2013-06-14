@@ -51,7 +51,7 @@ def construct_fragments(origimages, inputimages):
 def construct_manifest(files, outdir):
   #TODO: we need to construct metafile
   #      question is if we need it for each image
-  pass
+  return None
 
 def construct_metafile(fimg, fmeta, img_idx, dom_idx):
   metafile=""
