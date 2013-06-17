@@ -106,15 +106,20 @@ def construct_hw_disks(intpl, diskids):
 
   return orefs
 
-def create_archive(outfile, files, gzipit=True, stripandcwd=True):
+def create_archive(outfile, filesdir, files, gzipit=True, stripandcwd=True):
   mode = 'w' if not gzipit else 'w|gz'
 
   with tarfile.open(outfile, mode) as tar:
     for x in files:
       if stripandcwd:
         cwd = os.getcwd()
-        dirname = os.path.dirname(x)
-        name = os.path.basename(x)
+        dirname = os.path.join(cwd, filesdir)
+        #os.path.dirname(x)
+        #name = os.path.basename(x)
+        #name = os.path.relpath(x, cwd)
+        name = os.path.abspath(x)[len(
+          os.path.abspath(os.path.join(cwd, filesdir)))+1:]
+        #print name
         os.chdir(dirname)
       else:
         name = x

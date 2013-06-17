@@ -61,7 +61,7 @@ def doit2(mod, outname, (origimages, inputimages, otherf),
           izip_longest(inputimages, otherf), []))
 
   mf_name = mod.construct_manifest([ovf_name] + img_meta_paired, outdir)
-  print 'manifest: ', mf_name
+  #print 'manifest: ', mf_name
 
 #  print outname, [ovf_name] + img_meta_paired]
   if make_archive:
@@ -69,8 +69,8 @@ def doit2(mod, outname, (origimages, inputimages, otherf),
         [ovf_name, mf_name] + img_meta_paired)
     #TODO: stripandcwd info could be moved into module itself
     #      and not hardcoded like this
-    mod.create_archive(outname+'.ova', filelist, stripandcwd=typ=='vsphere')
-  print outname+'.ova'
+    mod.create_archive(outname+'.ova', outdir, filelist) #, stripandcwd=(typ=='vsphere'))
+  #print outname+'.ova'
 
 
 def showusage():
