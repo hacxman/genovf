@@ -8,15 +8,8 @@ import hashlib
 from importlib import import_module
 import tarfile
 
-def construct_fragments(origimages, inputimages,
-    reftpl, disktpl, diskitemtpl):
-  refs = construct_refs(reftpl, origimages, inputimages)
-  disks = construct_disks(disktpl, origimages, inputimages)
-  hwdisks = construct_hw_disks(diskitemtpl, disks)
-
-  return {'filereferencies': reduce(add, refs, ''),
-          'disksection': reduce(add, disks, ''),
-          'hwdiskitems': reduce(add, hwdisks, '')}
+def postprocess_ovf(data):
+  return data
 
 def construct_manifest(files, outdir=''):
   fname = os.path.join(outdir, 'MANIFEST.MF')
@@ -40,7 +33,7 @@ def generate_manifest_data(files, outdir):
   for img in files:
     sys.stdout.write('Calculating hash for {0}\n'.format(img))
     with open(img, 'rb') as fin:
-      digest = hashlib.sha256()
+      digest = hashlib.sha1()
       while True:
         r = fin.read(1024*1024)
         if r == '':
@@ -48,7 +41,7 @@ def generate_manifest_data(files, outdir):
         digest.update(r)
 
       digest_str = digest.hexdigest()
-      mf += "SHA256(%s)= %s\n" % (img, digest_str)
+      mf += "SHA1(%s)= %s\n" % (img, digest_str)
 
   os.chdir(cwd)
   return mf
@@ -66,14 +59,15 @@ def convert_images_to_vmdk(files, outpath):
   sys.stdout.write('Converting done.\n')
   return [files, ofils, []]
 
-def construct_refs(intpl, origimages, filenames):
+def construct_refs(intpl, origimages, filenames, filesdir):
   idx = 1
   orefs = [] # output File Referencies fragments for OVF
   for ofin, fin in zip(origimages, filenames):
     size = os.stat(ofin).st_size
     sparsesize = os.stat(fin).st_blocks*512
 
-    d = {'vmdkname': fin, 'fileid': 'file'+str(idx), 'filemaxsize': str(size)}
+    name = os.path.abspath(fin)[len(os.path.abspath(filesdir))+1:]
+    d = {'vmdkname': name, 'fileid': 'file'+str(idx), 'filemaxsize': str(size)}
     tpl = Template(intpl)
     orefs.append(tpl.substitute(d))
 
@@ -117,8 +111,9 @@ def create_archive(outfile, filesdir, files, gzipit=True, stripandcwd=True):
         #os.path.dirname(x)
         #name = os.path.basename(x)
         #name = os.path.relpath(x, cwd)
-        name = os.path.abspath(x)[len(
-          os.path.abspath(os.path.join(cwd, filesdir)))+1:]
+        #name = os.path.abspath(x)[len(
+        #  os.path.abspath(os.path.join(cwd, filesdir)))+1:]
+        name = os.path.abspath(x)[len(os.path.abspath(filesdir))+1:]
         #print name
         os.chdir(dirname)
       else:
@@ -129,3 +124,18 @@ def create_archive(outfile, filesdir, files, gzipit=True, stripandcwd=True):
       if stripandcwd:
         os.chdir(cwd)
     #map(lambda x: tar.add(x), files)
+
+def construct_fragments(origimages, inputimages,
+    reftpl, disktpl, diskitemtpl, outdir,
+    construct_refs=construct_refs,
+    construct_disks=construct_disks,
+    construct_hw_disks=construct_hw_disks):
+  refs = construct_refs(reftpl, origimages, inputimages, outdir)
+  disks = construct_disks(disktpl, origimages, inputimages)
+  hwdisks = construct_hw_disks(diskitemtpl, inputimages)#disks)
+
+  return {'filereferencies': reduce(add, refs, ''),
+          'disksection': reduce(add, disks, ''),
+          'hwdiskitems': reduce(add, hwdisks, '')}
+
+

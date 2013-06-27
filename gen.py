@@ -43,10 +43,15 @@ converters = {'vsphere': 'vsphere', 'rhev': 'rhev'}
 #
 def doit2(mod, outname, (origimages, inputimages, otherf),
           proffile, outdir, make_archive, typ):
+  print mod
+  import ast
+  print type(mod.construct_fragments)
+#  exit(3)
+
   with open(mod.template_name) as ftpl:
     tpl = Template(ftpl.read())
 
-    f = mod.construct_fragments(origimages, inputimages)
+    f = mod.construct_fragments(origimages, inputimages, outdir)
     map(lambda x: reduce(add, f[x], ''), f.keys())
     print f
 
@@ -54,6 +59,7 @@ def doit2(mod, outname, (origimages, inputimages, otherf),
       hwcfg = json.load(prof)
     f.update(hwcfg)
     outtpl = tpl.substitute(f)
+    outtpl = mod.postprocess_ovf(outtpl)
     ovf_name = mod.write_ovf(outname, outtpl, outdir)
 
   img_meta_paired = filter(lambda _x: _x is not None,
@@ -132,6 +138,9 @@ if __name__ == '__main__':
 
   doit2(mod, outfile, (origimages, inputimages, otherf),
         proffile, outdir, make_archive, typ)
+  #import profile
+  #profile.run("""doit2(mod, outfile, (origimages, inputimages, otherf),
+  #      proffile, outdir, make_archive, typ)""")
   #exit(1987)
 
   #doit(tpltypes[typ], outfile, inputimages, proffile, typ)

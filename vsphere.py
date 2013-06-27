@@ -1,9 +1,10 @@
 import common
 from common import create_archive
 import os
+from common import postprocess_ovf
 
 __all__ = ['construct_fragments', 'construct_manifest', 'convert_images',
-           'create_archive', 'template_name']
+           'create_archive', 'template_name', 'postprocess_ovf']
 
 reftpl = '<File ovf:href="$vmdkname" ovf:id="$fileid" ovf:size="$filemaxsize"/>'
 disktpl = '<Disk ovf:capacity="$capacity" ovf:capacityAllocationUnits="byte" ovf:diskId="$diskid" ovf:fileRef="$fileid" ovf:format="http://www.vmware.com/interfaces/specifications/vmdk.html#streamOptimized" ovf:populatedSize="$populsize"/>'
@@ -21,9 +22,9 @@ diskitemtpl = '''
 import module_locator
 template_name = os.path.join(module_locator.module_path(), 'vsphere.xml.tpl')
 
-def construct_fragments(origimages, inputimages):
+def construct_fragments(origimages, inputimages, outdir):
   return common.construct_fragments(origimages,
-      inputimages, reftpl, disktpl, diskitemtpl)
+      inputimages, reftpl, disktpl, diskitemtpl, outdir)
 
 #def construct_fragments(origimages, inputimages):
 #  refs = construct_refs(reftpl, origimages, inputimages)

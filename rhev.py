@@ -6,30 +6,24 @@ import subprocess
 import sys
 from operator import add
 from common import create_archive
+from string import Template
 
 __all__ = ['construct_fragments', 'construct_manifest', 'convert_images',
-           'create_archive', 'template_name']
+           'create_archive', 'template_name', 'postprocess_ovf']
 
 diskitemtpl = '''
       <Item>
-        <rasd:Caption>
-        b57db30f-070f-4173-bf6a-333ae9a247b0_Disk1</rasd:Caption>
-        <rasd:InstanceId>
-        92001497-5161-4233-9e91-0bf07d1d46b5</rasd:InstanceId>
+        <rasd:Caption>Hard Disk $idx</rasd:Caption>
+        <rasd:InstanceId>$instanceid</rasd:InstanceId>
         <rasd:ResourceType>17</rasd:ResourceType>
-        <rasd:HostResource>
-        f8da1407-601a-4751-bd87-ac32e70c7a86/92001497-5161-4233-9e91-0bf07d1d46b5</rasd:HostResource>
-        <rasd:Parent>
-        00000000-0000-0000-0000-000000000000</rasd:Parent>
-        <rasd:Template>
-        00000000-0000-0000-0000-000000000000</rasd:Template>
+        <rasd:HostResource>$diskid</rasd:HostResource>
+        <rasd:Parent>00000000-0000-0000-0000-000000000000</rasd:Parent>
+        <rasd:Template>00000000-0000-0000-0000-000000000000</rasd:Template>
         <rasd:ApplicationList></rasd:ApplicationList>
-        <rasd:StorageId>
-        c256eb74-a127-48d5-9321-a6bbcf354326</rasd:StorageId>
-        <rasd:StoragePoolId>
-        b9bb11c2-f397-4f41-a57b-7ac15a894779</rasd:StoragePoolId>
-        <rasd:CreationDate>2013/05/23 19:31:52</rasd:CreationDate>
-        <rasd:LastModified>2013/05/23 19:31:54</rasd:LastModified>
+        <rasd:StorageId>c256eb74-a127-48d5-9321-a6bbcf354326</rasd:StorageId>
+        <rasd:StoragePoolId>b9bb11c2-f397-4f41-a57b-7ac15a894779</rasd:StoragePoolId>
+        <rasd:CreationDate>$$exportdate</rasd:CreationDate>
+        <rasd:LastModified>$$exportdate</rasd:LastModified>
         <Type>disk</Type>
         <Device>disk</Device>
         <rasd:Address></rasd:Address>
@@ -44,9 +38,39 @@ disktpl = '<Disk ovf:capacity="$capacity" ovf:capacityAllocationUnits="byte" ovf
 import module_locator
 template_name = os.path.join(module_locator.module_path(), 'rhev.xml.tpl')
 
-def construct_fragments(origimages, inputimages):
-  return common.construct_fragments(origimages,
-      inputimages, reftpl, disktpl, diskitemtpl)
+def construct_hw_disks(intpl, diskids):
+  idx = 0
+  orefs = []
+  for did in diskids:
+    print did
+    idx = did.find('images/')
+    diskid = did[idx+len('images/'):]
+    instid  = diskid[diskid.find('/')+1:]
+
+    d = {'idx': idx, 'diskid': diskid, 'instanceid': instid} #17+idx}
+    tpl = Template(intpl)
+    orefs.append(tpl.substitute(d))
+  return orefs
+
+def set_export_date(data):
+  print type(data)
+  return Template(data).substitute({'exportdate':
+    time.strftime('%Y/%m/%d %H:%M:%S', time.localtime())})
+
+def construct_fragments(origimages, inputimages, outdir):
+#  old = common.construct_hw_disks
+#  common.construct_hw_disks = construct_hw_disks
+  output = common.construct_fragments(origimages,
+      inputimages, reftpl, disktpl, diskitemtpl, outdir,
+      construct_hw_disks=construct_hw_disks)
+#  common.construct_hw_disks = old
+
+#  output = set_export_date(output)
+  return output
+
+#def construct_fragments(origimages, inputimages):
+#  return common.construct_fragments(origimages,
+#      inputimages, reftpl, disktpl, diskitemtpl)
 
 def construct_manifest(files, outdir):
   #TODO: we need to construct metafile
@@ -109,6 +133,9 @@ def convert_images(files, outpath):
     construct_metafile(foutname, moutname, img_uuidx, '00000000-0000-0000-0000-000000000000')
 
   return [files, onames, mfiles]
+
+def postprocess_ovf(data):
+  return set_export_date(data)
 
 def write_ovf(ovfname, outtpl, outpath):
   '''
